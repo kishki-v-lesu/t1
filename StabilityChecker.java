@@ -9,44 +9,42 @@ public class StabilityChecker {
 
     public static void main(String[] args) {
         String csvFile = "data.csv"; // Путь к вашему CSV файлу
-        String line;
         String csvSplitBy = ";"; // Используем точку с запятой в качестве разделителя
 
         List<Double> valuesStream1 = new ArrayList<>();
         List<Double> valuesStream2 = new ArrayList<>();
         List<String> timestamps = new ArrayList<>(); // Список для хранения временных меток
 
-        // Создание сканера для ввода данных
+        double maxJumpValue = getMaxJumpValue();
+        readCsvData(csvFile, csvSplitBy, timestamps, valuesStream1, valuesStream2);
+        displayGraphsAndCheckStability(valuesStream1, valuesStream2, timestamps, maxJumpValue);
+    }
+
+    private static double getMaxJumpValue() {
         Scanner scanner = new Scanner(System.in);
-
-        // Ввод значения скачка
-        System.out.print("Введите максимальный скачок: ");
         double maxJumpValue;
-
-        // Проверка корректности ввода
         while (true) {
+            System.out.print("Введите максимальный скачок: ");
             try {
                 maxJumpValue = Double.parseDouble(scanner.nextLine());
-                break; // Если ввод корректен, выходим из цикла
+                return maxJumpValue; // Возвращаем значение сразу после успешного ввода
             } catch (NumberFormatException e) {
-                System.out.print("Некорректное значение. Пожалуйста, введите число: ");
+                System.out.println("Некорректное значение. Пожалуйста, введите число.");
             }
         }
+    }
 
-        // Чтение файла CSV
+    private static void readCsvData(String csvFile, String csvSplitBy, List<String> timestamps,
+                                     List<Double> valuesStream1, List<Double> valuesStream2) {
         try (BufferedReader br = new BufferedReader(new FileReader(csvFile))) {
-            // Пропустить заголовок, если он есть
-            br.readLine();
+            br.readLine(); // Пропустить заголовок, если он есть
+            String line;
             while ((line = br.readLine()) != null) {
                 String[] values = line.split(csvSplitBy);
-                // Проверяем, что массив имеет достаточное количество элементов
                 if (values.length >= 3) {
-                    // Сохраняем временную метку и значения из второго и третьего столбцов
-                    timestamps.add(values[0]); // Сохраняем временную метку
-                    double value1 = Double.parseDouble(values[1]);
-                    double value2 = Double.parseDouble(values[2]);
-                    valuesStream1.add(value1);
-                    valuesStream2.add(value2);
+                    timestamps.add(values[0]);
+                    valuesStream1.add(parseDouble(values[1]));
+                    valuesStream2.add(parseDouble(values[2]));
                 } else {
                     System.out.println("Пропущена строка из-за недостаточного количества колонок: " + line);
                 }
@@ -54,21 +52,23 @@ public class StabilityChecker {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
-        // Отображение графиков
-        System.out.println("\nГрафик для Поток 1:");
+    private static double parseDouble(String value) {
+        try {
+            return Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            System.out.println("Некорректное значение для преобразования: " + value);
+            return 0.0; // Возвращаем 0.0 или можно выбросить исключение
+        }
+    }
+
+    private static void displayGraphsAndCheckStability(List<Double> valuesStream1, List<Double> valuesStream2,
+                                                        List<String> timestamps, double maxJumpValue) {
         displayGraph(valuesStream1, "Поток 1");
-        System.out.println("\nГрафик для Поток 2:");
         displayGraph(valuesStream2, "Поток 2");
-
-        // Проверка стабильности данных
-        System.out.println("\nПроверка стабильности для Поток 1:");
         checkStability(valuesStream1, timestamps, maxJumpValue, "Поток 1");
-        System.out.println("\nПроверка стабильности для Поток 2:");
         checkStability(valuesStream2, timestamps, maxJumpValue, "Поток 2");
-
-        // Закрытие сканера
-        scanner.close();
     }
 
     private static void checkStability(List<Double> values, List<String> timestamps, double maxJumpValue, String streamName) {
@@ -80,8 +80,8 @@ public class StabilityChecker {
         for (int i = 0; i < values.size() - 1; i++) {
             double jump = Math.abs(values.get(i) - values.get(i + 1));
             if (jump > maxJumpValue) {
-                // Выводим временную метку для первого значения
-                System.out.println("Нестабильность в " + streamName + " на " + timestamps.get(i) + ": между значениями " + values.get(i) + " и " + values.get(i + 1) + ": скачок = " + jump);
+                System.out.printf("Нестабильность в %s на %s: между значениями %.2f и %.2f: скачок = %.2f%n",
+                        streamName, timestamps.get(i), values.get(i), values.get(i + 1), jump);
             }
         }
     }
@@ -92,13 +92,7 @@ public class StabilityChecker {
 
         for (double value : values) {
             int scaledValue = (int) (value * scale); // Масштабируем значение
-            System.out.print(streamName + ": ");
-            for (int j = 0; j < scaledValue; j++) {
-                System.out.print("*"); // Отображаем звёздочки
-            }
-            System.out.println(" (" + value + ")");
+            System.out.printf("%s: %s (%.2f)%n", streamName, "*".repeat(scaledValue), value);
         }
     }
 }
-
-
